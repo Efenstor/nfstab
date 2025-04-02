@@ -1,0 +1,10 @@
+[Unit]
+Description=Mounts NFS mounts on startup better than fstab
+Requires=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/etc/nfstab_mount
+
+[Install]
+WantedBy=multi-user.target

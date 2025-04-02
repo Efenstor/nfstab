@@ -1,0 +1,45 @@
+#!/bin/sh
+# Copyleft Efenstor
+# revision 2025.04.02
+
+# Mounts NFS mounts better than fstab. Fstab fails if network-online.target has
+# been reached but the actual network is not quite available for some reason
+
+# Don't forget to enable /ets/systemd/system/nfstab_mount.service for autostart
+
+nfstab_path=/etc/nfstab
+mount_options=rw,hard,noatime,nodiratime,rsize=8192,wsize=8192
+retry_pause=1
+
+# Usage: nfsmount <mountpoint> <server:path>
+nfsmount()
+{
+  while :; do
+    if df | grep "$1" > /dev/null; then
+      echo "$1" already mounted
+      return 1
+    fi
+    mount -t nfs -o $mount_options "$2" "$1"
+    if [ $? -eq 0 ]; then
+      echo "$1" mounted successfully
+      return 2
+    fi
+    sleep $retry_pause
+  done
+  return 0
+}
+
+# Read nfstab and mount
+while read -r a; do
+  if [ -z "$a" ] || echo "$a" | grep "^#" > /dev/null; then
+    # Skip empty line or comment
+    continue
+  fi
+  l=$(echo "$a" | sed 'y/ /\t/;s/[ \t]\+/\t/g;s/^\t//')
+  mountpoint=$(echo "$l" | cut -f 1)
+  netpath=$(echo "$l" | cut -f 2)
+  nfsmount "$mountpoint" "$netpath"
+done < "$nfstab_path"
+
+exit 0
+
